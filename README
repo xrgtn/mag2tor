@@ -1,0 +1,12 @@
+mag2tor.py - Convert magnet link to torrent file.
+
+USAGE: ./mag2tor.py <magnet_link1> [<magnet_link2> ...]
+
+mag2tor.py tries to get .torrent file for each magnet link specified on
+its commandline and write it into the current directory. For this it
+needs working Internet connection and at least one active
+seeder/leecher for the magnet/torrent. NOTE: waiting for magnet may
+take days or even forever.
+
+This mag2tor script has been inspired by the Magnet2Torrent from
+https://github.com/danfolkes/Magnet2Torrent.git.
