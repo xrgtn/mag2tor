@@ -24,21 +24,25 @@ int main(int argc, char *argv[]) {
 	atp.url = argv[1];
 	atp.upload_mode = true;
 	atp.auto_managed = false;
+	atp.paused = false;
 	atp.save_path = "."; // save in current dir
+	/*
+	// .flags duplicate .upload_mode/auto_managed/paused
+	// functionality:
+	atp.flags = lt::add_torrent_params::flag_update_subscribe
+		| lt::add_torrent_params::flag_upload_mode
+		| lt::add_torrent_params::flag_apply_ip_filter;
+	*/
 	lt::torrent_handle torh = ses.add_torrent(atp);
-	std::cout << atp.url << " ";
+	std::cout << atp.url << ":";
 	for (;;) {
 		std::deque<lt::alert*> alerts;
 		ses.pop_alerts(&alerts);
 		for (lt::alert const* a : alerts) {
 			std::cout << a->message() << std::endl;
 			// quit on error/finish:
-			if (lt::alert_cast<lt::torrent_finished_alert>(a)) {
-				std::cout << " finished";
-				goto done1;
-			};
-			if (lt::alert_cast<lt::torrent_error_alert>(a)) {
-				std::cout << " failed";
+			if (lt::alert_cast<lt::torrent_finished_alert>(a)
+			|| lt::alert_cast<lt::torrent_error_alert>(a)) {
 				goto done1;
 			};
 		}
