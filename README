@@ -1,12 +1,18 @@
-mag2tor.py - Convert magnet link to torrent file.
+mag2tor - Convert magnet link to torrent file.
 
-USAGE: ./mag2tor.py <magnet_link1> [<magnet_link2> ...]
+USAGE: mag2tor.py <magnet_link1> [<magnet_link2> ...]
+    or mag2tor <magnet_link>
 
-mag2tor.py tries to get .torrent file for each magnet link specified on
+mag2tor tries to get .torrent file for each magnet link specified on
 its commandline and write it into the current directory. For this it
 needs working Internet connection and at least one active
 seeder/leecher for the magnet/torrent. NOTE: waiting for magnet may
 take days or even forever.
 
-This mag2tor script has been inspired by the Magnet2Torrent from
-https://github.com/danfolkes/Magnet2Torrent.git.
+The mag2tor.py script has been inspired by the Magnet2Torrent from
+https://github.com/danfolkes/Magnet2Torrent.git. It requires Python,
+libtorrent-rasterbar, libboost and Python bindings for
+libtorrent-rasterbar.
+
+C++ version of mag2tor works almost the same way as mag2tor.py but
+doesn't require Python and Python bindings for libtorrent-rasterbar.
