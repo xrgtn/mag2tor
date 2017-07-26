@@ -1,7 +1,9 @@
-#include <iostream>
-#include <fstream>
-#include <thread>
 #include <chrono>
+#include <exception>
+#include <stdexcept>	// __gnu_cxx::__verbose_terminate_handler
+#include <fstream>
+#include <iostream>
+#include <thread>
 
 #include <libtorrent/add_torrent_params.hpp>
 #include <libtorrent/alert_types.hpp>
@@ -13,6 +15,7 @@
 
 namespace lt = libtorrent;
 int main(int argc, char *argv[]) {
+	std::set_terminate(__gnu_cxx::__verbose_terminate_handler);
 	if (argc != 2) {
 		std::cerr << "usage: " << argv[0] << " <magnet-url>" <<
 			std::endl;
@@ -52,7 +55,10 @@ int main(int argc, char *argv[]) {
 				torh.get_torrent_info();
 			std::cout << tinf.name();
 			std::cout.flush();
-			std::ofstream ofs(tinf.name() + ".torrent");
+			std::ofstream ofs;
+			ofs.exceptions(std::ofstream::failbit
+					| std::ofstream::badbit);
+			ofs.open(tinf.name() + ".torrent");
 			std::ostream_iterator<char> ofsi(ofs);
 			lt::bencode(ofsi, lt::create_torrent(tinf)
 					.generate());
