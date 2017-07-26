@@ -54,7 +54,8 @@ int main(int argc, char *argv[]) {
 			std::cout.flush();
 			std::ofstream ofs(tinf.name() + ".torrent");
 			std::ostream_iterator<char> ofsi(ofs);
-			lt::bencode(ofsi, lt::create_torrent(tinf).generate());
+			lt::bencode(ofsi, lt::create_torrent(tinf)
+					.generate());
 			ofs.close();
 			ses.remove_torrent(torh);
 			goto done0;
