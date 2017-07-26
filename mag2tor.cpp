@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
 		std::deque<lt::alert*> alerts;
 		ses.pop_alerts(&alerts);
 		for (lt::alert const* a : alerts) {
-			std::cout << a->message() << std::endl;
+			std::cout << std::endl << a->message() << std::endl;
 			// quit on error/finish:
 			if (lt::alert_cast<lt::torrent_finished_alert>(a)
 			|| lt::alert_cast<lt::torrent_error_alert>(a)) {
@@ -53,7 +53,7 @@ int main(int argc, char *argv[]) {
 			ses.pause();
 			lt::torrent_info tinf =
 				torh.get_torrent_info();
-			std::cout << tinf.name();
+			std::cout << tinf.name() << std::endl;
 			std::cout.flush();
 			std::ofstream ofs;
 			ofs.exceptions(std::ofstream::failbit
@@ -72,10 +72,8 @@ int main(int argc, char *argv[]) {
 			std::chrono::milliseconds(1000));
 	}
 done0:
-	std::cout << std::endl;
 	return 0;
 done1:
-	std::cout << std::endl;
 	return 1;
 }
 
