@@ -10,6 +10,7 @@
 #include <libtorrent/bencode.hpp>
 #include <libtorrent/create_torrent.hpp>
 #include <libtorrent/session.hpp>
+#include <libtorrent/storage_defs.hpp>	// lt::disabled_storage_constructor
 #include <libtorrent/torrent_handle.hpp>
 #include <libtorrent/torrent_info.hpp>
 
@@ -28,6 +29,9 @@ int main(int argc, char *argv[]) {
 	atp.upload_mode = true;
 	atp.auto_managed = false;
 	atp.paused = false;
+	// Start with "storage == disabled" to avoid pre-allocating any files
+	// mentioned in the torrent file on disk:
+	atp.storage = lt::disabled_storage_constructor;
 	atp.save_path = "."; // save in current dir
 	/*
 	// .flags duplicate .upload_mode/auto_managed/paused
