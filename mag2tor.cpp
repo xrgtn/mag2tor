@@ -53,7 +53,8 @@ int main(int argc, char *argv[]) {
 				goto done1;
 			};
 		}
-		if (torh.has_metadata()) {
+		lt::torrent_status tstat = torh.status();
+		if (tstat.has_metadata) {
 			ses.pause();
 			lt::torrent_info tinf =
 				torh.get_torrent_info();
