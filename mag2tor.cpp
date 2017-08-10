@@ -1,3 +1,6 @@
+#include <stddef.h>	// NULL
+#include <unistd.h>	// optind
+#include <getopt.h>	// getopt_long()
 #include <chrono>
 #include <exception>
 #include <stdexcept>	// __gnu_cxx::__verbose_terminate_handler
@@ -16,8 +19,15 @@
 #include <libtorrent/torrent_info.hpp>
 
 static int usage(const char *argv0) {
-	std::cerr << "usage: " << argv0 << " <magnet-url>" <<
+	std::cerr << "usage: [options] " << argv0 << " <magnet-url>" <<
 		std::endl;
+	std::cerr << "where options are:" << std::endl;
+	std::cerr << "  -a, --anonymous  anonymous mode" << std::endl;
+	std::cerr << "  -t, --tcp        TCP mode" << std::endl;
+	std::cerr << "  -u, --udp        UDP mode (specifying both"
+		<< " -t and -u enables both protocols" << std::endl;
+	std::cerr << "                   with UDP trackers preferred)"
+		<< std::endl;
 	return 1;
 }
 
@@ -26,14 +36,61 @@ int main(int argc, char *argv[]) {
 	std::set_terminate(__gnu_cxx::__verbose_terminate_handler);
 
 	lt::session_settings sset;
-	sset.prefer_udp_trackers = false;
+	lt::add_torrent_params atp;
+	int tcp_udp = 0;
+	char *magnet_url = NULL;
 
-	if (argc != 2) return usage(argv[0]);
+	for (;;) {
+		static struct option lopts[] = {
+			{"anonymous", no_argument, NULL, 'a'},
+			{"tcp",       no_argument, NULL, 't'},
+			{"udp",       no_argument, NULL, 'u'},
+		};
+		int loptind = -1;
+		int c = getopt_long(argc, argv, "atu", lopts, &loptind);
+		if (c == -1) break;
+		switch (c) {
+			case 'a': sset.anonymous_mode = true; break;
+			case 't': tcp_udp |= 1; break;
+			case 'u': tcp_udp |= 2; break;
+			default: return usage(argv[0]);;
+		}
+	}
+	if (argc - optind != 1) return usage(argv[0]);
+	atp.url = argv[optind];
+	switch (tcp_udp) {
+		case 0:
+			sset.prefer_udp_trackers = false;
+			sset.enable_outgoing_tcp = true;
+			sset.enable_incoming_tcp = true;
+			sset.enable_outgoing_utp = true;
+			sset.enable_incoming_utp = true;
+			break;
+		case 1:
+			sset.prefer_udp_trackers = false;
+			sset.enable_outgoing_tcp = true;
+			sset.enable_incoming_tcp = true;
+			sset.enable_outgoing_utp = false;
+			sset.enable_incoming_utp = false;
+			break;
+		case 2:
+			sset.prefer_udp_trackers = true;
+			sset.enable_outgoing_tcp = false;
+			sset.enable_incoming_tcp = false;
+			sset.enable_outgoing_utp = true;
+			sset.enable_incoming_utp = true;
+			break;
+		case 3:
+			sset.prefer_udp_trackers = true;
+			sset.enable_outgoing_tcp = true;
+			sset.enable_incoming_tcp = true;
+			sset.enable_outgoing_utp = true;
+			sset.enable_incoming_utp = true;
+			break;
+	}
 
 	lt::session sess;
 	sess.set_settings(sset);
-	lt::add_torrent_params atp;
-	atp.url = argv[1];
 	atp.upload_mode = true;
 	atp.auto_managed = false;
 	atp.paused = false;
