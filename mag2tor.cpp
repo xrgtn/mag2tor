@@ -10,6 +10,7 @@
 #include <libtorrent/bencode.hpp>
 #include <libtorrent/create_torrent.hpp>
 #include <libtorrent/session.hpp>
+#include <libtorrent/session_settings.hpp>
 #include <libtorrent/storage_defs.hpp>	// lt::disabled_storage_constructor
 #include <libtorrent/torrent_handle.hpp>
 #include <libtorrent/torrent_info.hpp>
@@ -17,6 +18,10 @@
 namespace lt = libtorrent;
 int main(int argc, char *argv[]) {
 	std::set_terminate(__gnu_cxx::__verbose_terminate_handler);
+
+	lt::session_settings sset;
+	sset.prefer_udp_trackers = false;
+
 	if (argc != 2) {
 		std::cerr << "usage: " << argv[0] << " <magnet-url>" <<
 			std::endl;
@@ -24,6 +29,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	lt::session sess;
+	sess.set_settings(sset);
 	lt::add_torrent_params atp;
 	atp.url = argv[1];
 	atp.upload_mode = true;
