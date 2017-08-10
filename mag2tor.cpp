@@ -62,7 +62,8 @@ int main(int argc, char *argv[]) {
 			std::ofstream ofs;
 			ofs.exceptions(std::ofstream::failbit
 					| std::ofstream::badbit);
-			ofs.open(tinf.name() + ".torrent");
+			ofs.open(tinf.name() + ".torrent",
+					std::ofstream::binary);
 			std::ostream_iterator<char> ofsi(ofs);
 			lt::bencode(ofsi, lt::create_torrent(tinf)
 					.generate());
