@@ -90,7 +90,8 @@ int main(int argc, char *argv[]) {
 			break;
 	}
 
-	lt::session sess(lt::fingerprint("LT", 0, 0, 0, 0), 0);
+	lt::session sess(lt::fingerprint("LT", 0, 0, 0, 0),
+			lt::session::add_default_plugins);
 	sess.set_settings(sset);
 	atp.upload_mode = true;
 	atp.auto_managed = false;
