@@ -15,6 +15,12 @@
 #include <libtorrent/torrent_handle.hpp>
 #include <libtorrent/torrent_info.hpp>
 
+int usage(const char *argv0) {
+	std::cerr << "usage: " << argv0 << " <magnet-url>" <<
+		std::endl;
+	return 1;
+}
+
 namespace lt = libtorrent;
 int main(int argc, char *argv[]) {
 	std::set_terminate(__gnu_cxx::__verbose_terminate_handler);
@@ -22,11 +28,7 @@ int main(int argc, char *argv[]) {
 	lt::session_settings sset;
 	sset.prefer_udp_trackers = false;
 
-	if (argc != 2) {
-		std::cerr << "usage: " << argv[0] << " <magnet-url>" <<
-			std::endl;
-		return 1;
-	}
+	if (argc != 2) return usage(argv[0]);
 
 	lt::session sess;
 	sess.set_settings(sset);
