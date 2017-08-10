@@ -12,6 +12,7 @@
 #include <libtorrent/alert_types.hpp>
 #include <libtorrent/bencode.hpp>
 #include <libtorrent/create_torrent.hpp>
+#include <libtorrent/fingerprint.hpp>
 #include <libtorrent/session.hpp>
 #include <libtorrent/session_settings.hpp>
 #include <libtorrent/storage_defs.hpp>	// lt::disabled_storage_constructor
@@ -89,7 +90,7 @@ int main(int argc, char *argv[]) {
 			break;
 	}
 
-	lt::session sess;
+	lt::session sess(lt::fingerprint("LT", 0, 0, 0, 0), 0);
 	sess.set_settings(sset);
 	atp.upload_mode = true;
 	atp.auto_managed = false;
