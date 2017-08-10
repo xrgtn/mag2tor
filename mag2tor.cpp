@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 
-	lt::session ses;
+	lt::session sess;
 	lt::add_torrent_params atp;
 	atp.url = argv[1];
 	atp.upload_mode = true;
@@ -40,11 +40,11 @@ int main(int argc, char *argv[]) {
 		| lt::add_torrent_params::flag_upload_mode
 		| lt::add_torrent_params::flag_apply_ip_filter;
 	*/
-	lt::torrent_handle torh = ses.add_torrent(atp);
+	lt::torrent_handle torh = sess.add_torrent(atp);
 	std::cout << atp.url << ":";
 	for (;;) {
 		std::deque<lt::alert*> alerts;
-		ses.pop_alerts(&alerts);
+		sess.pop_alerts(&alerts);
 		for (lt::alert const* a : alerts) {
 			std::cout << std::endl << a->message() << std::endl;
 			// quit on error/finish:
@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
 			};
 		}
 		if (torh.status().has_metadata) {
-			ses.pause();
+			sess.pause();
 			lt::torrent_info tinf =
 				torh.get_torrent_info();
 			std::cout << tinf.name() << std::endl;
@@ -68,7 +68,7 @@ int main(int argc, char *argv[]) {
 			lt::bencode(ofsi, lt::create_torrent(tinf)
 					.generate());
 			ofs.close();
-			ses.remove_torrent(torh);
+			sess.remove_torrent(torh);
 			goto done0;
 		};
 		std::cout << ".";
