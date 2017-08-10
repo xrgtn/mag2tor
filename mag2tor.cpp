@@ -15,7 +15,7 @@
 #include <libtorrent/torrent_handle.hpp>
 #include <libtorrent/torrent_info.hpp>
 
-int usage(const char *argv0) {
+static int usage(const char *argv0) {
 	std::cerr << "usage: " << argv0 << " <magnet-url>" <<
 		std::endl;
 	return 1;
