@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
 
 	lt::session_settings sset;
 	lt::add_torrent_params atp;
-	int tcp_udp = 0;
+	int sess_tcp_udp = 0;
 	char *magnet_url = NULL;
 
 	for (;;) {
@@ -52,14 +52,14 @@ int main(int argc, char *argv[]) {
 		if (c == -1) break;
 		switch (c) {
 			case 'a': sset.anonymous_mode = true; break;
-			case 't': tcp_udp |= 1; break;
-			case 'u': tcp_udp |= 2; break;
+			case 't': sess_tcp_udp |= 1; break;
+			case 'u': sess_tcp_udp |= 2; break;
 			default: return usage(argv[0]);;
 		}
 	}
 	if (argc - optind != 1) return usage(argv[0]);
 	atp.url = argv[optind];
-	switch (tcp_udp) {
+	switch (sess_tcp_udp) {
 		case 0:
 			sset.prefer_udp_trackers = false;
 			sset.enable_outgoing_tcp = true;
