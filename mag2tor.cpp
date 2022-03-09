@@ -8,13 +8,28 @@
 #include <iostream>
 #include <thread>
 
+#include <libtorrent/version.hpp>
 #include <libtorrent/add_torrent_params.hpp>
 #include <libtorrent/alert_types.hpp>
 #include <libtorrent/bencode.hpp>
 #include <libtorrent/create_torrent.hpp>
 #include <libtorrent/fingerprint.hpp>
 #include <libtorrent/session.hpp>
+#if LIBTORRENT_VERSION_NUM < 10200
 #include <libtorrent/session_settings.hpp>
+#else
+#include <libtorrent/settings_pack.hpp>
+#include <libtorrent/torrent_flags.hpp>	// lt::torrent_flags::paused
+#include <libtorrent/magnet_uri.hpp>	// lt::parse_magnet_uri()
+// struct lt::aux::session_impl::session_plugin_wrapper:
+#include <libtorrent/aux_/session_impl.hpp>
+// lt::create_ut_metadata_plugin():
+#include <libtorrent/extensions/ut_metadata.hpp>
+// lt::create_ut_pex_plugin():
+#include <libtorrent/extensions/ut_pex.hpp>
+// lt::create_smart_ban_plugin():
+#include <libtorrent/extensions/smart_ban.hpp>
+#endif
 #include <libtorrent/storage_defs.hpp>	// lt::disabled_storage_constructor
 #include <libtorrent/torrent_handle.hpp>
 #include <libtorrent/torrent_info.hpp>
@@ -23,7 +38,8 @@ static int usage(const char *argv0) {
 	std::cerr << "usage: [options] " << argv0 << " <magnet-url>" <<
 		std::endl;
 	std::cerr << "where options are:" << std::endl;
-	std::cerr << "  -a, --anonymous  anonymous mode" << std::endl;
+	std::cerr << "  -a, --anonymous  anonymous mode"
+		<< " via socks5://localhost:9050" << std::endl;
 	std::cerr << "  -t, --tcp        TCP mode" << std::endl;
 	std::cerr << "  -u, --udp        UDP mode (specifying both"
 		<< " -t and -u enables both protocols" << std::endl;
@@ -36,11 +52,16 @@ namespace lt = libtorrent;
 int main(int argc, char *argv[]) {
 	std::set_terminate(__gnu_cxx::__verbose_terminate_handler);
 
+#if LIBTORRENT_VERSION_NUM < 10200
 	lt::session_settings sset;
-	lt::add_torrent_params atp;
+#else
+	lt::settings_pack spack;
+#endif
 	int sess_tcp_udp = 0;
+	int sess_anon    = 0;
 	char *magnet_url = NULL;
 
+	// Parse cmdline options and args:
 	for (;;) {
 		static struct option lopts[] = {
 			{"anonymous", no_argument, NULL, 'a'},
@@ -51,55 +72,76 @@ int main(int argc, char *argv[]) {
 		int c = getopt_long(argc, argv, "atu", lopts, &loptind);
 		if (c == -1) break;
 		switch (c) {
-			case 'a': sset.anonymous_mode = true; break;
-			case 't': sess_tcp_udp |= 1; break;
-			case 'u': sess_tcp_udp |= 2; break;
-			default: return usage(argv[0]);;
+			case 'a': sess_anon = 1;	break;
+			case 't': sess_tcp_udp |= 1;	break;
+			case 'u': sess_tcp_udp |= 2;	break;
+			default: return usage(argv[0]);
 		}
 	}
 	if (argc - optind != 1) return usage(argv[0]);
-	atp.url = argv[optind];
-	switch (sess_tcp_udp) {
-		case 0:
-			sset.prefer_udp_trackers = false;
-			sset.enable_outgoing_tcp = true;
-			sset.enable_incoming_tcp = true;
-			sset.enable_outgoing_utp = true;
-			sset.enable_incoming_utp = true;
-			break;
-		case 1:
-			sset.prefer_udp_trackers = false;
-			sset.enable_outgoing_tcp = true;
-			sset.enable_incoming_tcp = true;
-			sset.enable_outgoing_utp = false;
-			sset.enable_incoming_utp = false;
-			break;
-		case 2:
-			sset.prefer_udp_trackers = true;
-			sset.enable_outgoing_tcp = false;
-			sset.enable_incoming_tcp = false;
-			sset.enable_outgoing_utp = true;
-			sset.enable_incoming_utp = true;
-			break;
-		case 3:
-			sset.prefer_udp_trackers = true;
-			sset.enable_outgoing_tcp = true;
-			sset.enable_incoming_tcp = true;
-			sset.enable_outgoing_utp = true;
-			sset.enable_incoming_utp = true;
-			break;
-	}
+	magnet_url = argv[optind];
 
+	// Init session settings:
+#if LIBTORRENT_VERSION_NUM < 10200
+	sset.prefer_udp_trackers = sess_tcp_udp & 2  ?  true : false;
+	sset.enable_outgoing_tcp = sess_tcp_udp == 2 ? false :  true;
+	sset.enable_incoming_tcp = sess_tcp_udp == 2 ? false :  true;
+	sset.enable_outgoing_utp = sess_tcp_udp == 1 ? false :  true
+	sset.enable_incoming_utp = sess_tcp_udp == 1 ? false :  true;
+	sset.anonymous_mode      = sess_anon         ?  true : false;
+#else
+	spack.set_bool(lt::settings_pack::prefer_udp_trackers,
+		sess_tcp_udp & 2  ?  true : false);
+	spack.set_bool(lt::settings_pack::enable_outgoing_tcp,
+		sess_tcp_udp == 2 ? false :  true);
+	spack.set_bool(lt::settings_pack::enable_incoming_tcp,
+		sess_tcp_udp == 2 ? false :  true);
+	spack.set_bool(lt::settings_pack::enable_outgoing_utp,
+		sess_tcp_udp == 1 ? false :  true);
+	spack.set_bool(lt::settings_pack::enable_incoming_utp,
+		sess_tcp_udp == 1 ? false :  true);
+	spack.set_str(lt::settings_pack::peer_fingerprint,
+		lt::generate_fingerprint("LT", 0, 0, 0, 0));
+	spack.set_str(lt::settings_pack::user_agent,
+		"libtorrent/" LIBTORRENT_VERSION);
+	if (sess_anon == 1) {
+		spack.set_str(lt::settings_pack::proxy_hostname,
+			"127.0.0.1");
+		spack.set_int(lt::settings_pack::proxy_port, 9050);
+		spack.set_int(lt::settings_pack::proxy_type,
+			lt::settings_pack::proxy_type_t::socks5);
+		// External listen interfaces are not needed when going via
+		// 127.0.0.1:9050 (in fact, internal aren't too, but there's
+		// no way to stop libtorrent from trying to bind to
+		// something):
+		spack.set_str(lt::settings_pack::listen_interfaces,
+			"127.0.0.1:6881");
+		// Connect only via proxy:
+		spack.set_bool(lt::settings_pack::anonymous_mode, true);
+		spack.set_bool(lt::settings_pack::proxy_peer_connections,
+			true);
+		spack.set_bool(lt::settings_pack::proxy_tracker_connections,
+			true);
+		// Resolve DNS via proxy:
+		spack.set_bool(lt::settings_pack::proxy_hostnames, true);
+	};
+	// lt::session::start_default_features flag causes these to be set
+	// to true, but neither is necessary for converting magnet: link
+	// into .torrent file:
+	spack.set_bool(lt::settings_pack::enable_upnp,   false);
+	spack.set_bool(lt::settings_pack::enable_natpmp, false);
+	spack.set_bool(lt::settings_pack::enable_lsd,    false);
+	spack.set_bool(lt::settings_pack::enable_dht,    false);
+#endif
+
+#if LIBTORRENT_VERSION_NUM < 10200
 	lt::session sess(lt::fingerprint("LT", 0, 0, 0, 0),
 			lt::session::add_default_plugins);
 	sess.set_settings(sset);
+	lt::add_torrent_params atp;
 	atp.upload_mode = true;
 	atp.auto_managed = false;
 	atp.paused = false;
-	// Start with "storage == disabled" to avoid pre-allocating any files
-	// mentioned in the torrent file on disk:
-	atp.storage = lt::disabled_storage_constructor;
-	atp.save_path = "."; // save in current dir
 	/*
 	// .flags duplicate .upload_mode/auto_managed/paused
 	// functionality:
@@ -107,10 +149,37 @@ int main(int argc, char *argv[]) {
 		| lt::add_torrent_params::flag_upload_mode
 		| lt::add_torrent_params::flag_apply_ip_filter;
 	*/
+#else
+	// Create session_params and session. The ut_metadata extension
+	// (plugin) is requited to get .torrent metadata via magnet: link,
+	// but the other two default plugins (ut_pex and smart_ban) aren't.
+	using plgnwrp = lt::aux::session_impl::session_plugin_wrapper;
+	std::vector<std::shared_ptr<lt::plugin>> exts;
+	exts.push_back(
+		std::make_shared<plgnwrp>(&lt::create_ut_metadata_plugin));
+	lt::session_params sparams(spack, exts);
+	// sparams.disk_io_constructor = lt::disabled_disk_io_constructor();
+	lt::session sess(sparams);
+	// sess.add_extension(&lt::create_ut_pex_plugin);
+	// sess.add_extension(&lt::create_smart_ban_plugin);
+	lt::add_torrent_params atp = lt::parse_magnet_uri(magnet_url);
+	atp.flags = lt::torrent_flags::upload_mode
+		| lt::torrent_flags::auto_managed
+		| lt::torrent_flags::paused;
+#endif
+	// Start loading torrent metadata with "storage == disabled" to avoid
+	// pre-allocating any files mentioned in the torrent file on disk:
+	atp.storage = lt::disabled_storage_constructor;
+	atp.save_path = "."; // save in current dir
+
 	lt::torrent_handle torh = sess.add_torrent(atp);
-	std::cout << atp.url << ":";
+	std::cout << magnet_url << ":";
 	for (;;) {
+#if LIBTORRENT_VERSION_NUM < 10200
 		std::deque<lt::alert*> alerts;
+#else
+		std::vector<lt::alert*> alerts;
+#endif
 		sess.pop_alerts(&alerts);
 		for (lt::alert const* a : alerts) {
 			std::cout << std::endl << a->message() << std::endl;
@@ -122,18 +191,30 @@ int main(int argc, char *argv[]) {
 		}
 		if (torh.status().has_metadata) {
 			sess.pause();
+#if LIBTORRENT_VERSION_NUM < 10200
 			lt::torrent_info tinf =
 				torh.get_torrent_info();
-			std::cout << tinf.name() << std::endl;
+			const std::string &tname = tinf.name();
+#else
+			std::shared_ptr<const lt::torrent_info> tinf =
+				torh.torrent_file();
+			const std::string &tname = tinf->name();
+#endif
+			std::cout << tname << std::endl;
 			std::cout.flush();
 			std::ofstream ofs;
 			ofs.exceptions(std::ofstream::failbit
 					| std::ofstream::badbit);
-			ofs.open(tinf.name() + ".torrent",
+			ofs.open(tname + ".torrent",
 					std::ofstream::binary);
 			std::ostream_iterator<char> ofsi(ofs);
+#if LIBTORRENT_VERSION_NUM < 10200
 			lt::bencode(ofsi, lt::create_torrent(tinf)
 					.generate());
+#else
+			lt::bencode(ofsi, lt::create_torrent(*tinf)
+					.generate());
+#endif
 			ofs.close();
 			sess.remove_torrent(torh);
 			goto done0;
