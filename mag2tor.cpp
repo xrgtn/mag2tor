@@ -34,6 +34,13 @@
 #include <libtorrent/torrent_handle.hpp>
 #include <libtorrent/torrent_info.hpp>
 
+#if LIBTORRENT_VERSION_NUM >= 20000
+#include <libtorrent/download_priority.hpp>	// lt::download_priority_t,
+						// lt::dont_download
+#include <libtorrent/units.hpp>			// lt::file_index_t
+#include <libtorrent/aux_/vector.hpp>		// lt::aux::vector<>
+#endif
+
 static int usage(const char *argv0) {
 	std::cerr << "usage: [options] " << argv0 << " <magnet-url>" <<
 		std::endl;
@@ -163,13 +170,36 @@ int main(int argc, char *argv[]) {
 	// sess.add_extension(&lt::create_ut_pex_plugin);
 	// sess.add_extension(&lt::create_smart_ban_plugin);
 	lt::add_torrent_params atp = lt::parse_magnet_uri(magnet_url);
+	// Citing add_torrent_params.hpp:
+	//     The add_torrent_params class has a flags field. It can be used
+	//     to control what state the new torrent will be added in. Common
+	//     flags to want to control are torrent_flags::paused and
+	//     torrent_flags::auto_managed. In order to add a magnet link
+	//     that will just download the metadata, but no payload, set the
+	//     torrent_flags::upload_mode flag.
+	// Hopefully 'upload_mode' works as advertized above, but in case it
+	// doesn't, use 'disabled_storage_constructor' or long vector with
+	// 'dont_download' anyway...
 	atp.flags = lt::torrent_flags::upload_mode
 		| lt::torrent_flags::auto_managed
 		| lt::torrent_flags::paused;
 #endif
+
+#if LIBTORRENT_VERSION_NUM < 20000
 	// Start loading torrent metadata with "storage == disabled" to avoid
 	// pre-allocating any files mentioned in the torrent file on disk:
 	atp.storage = lt::disabled_storage_constructor;
+#else
+	// XXX:kludge:
+	// Disable downloading all files in the torrent. But because we don't
+	// know beforehand how many files will be there, just disable
+	// downloading first 65535 files in it:
+	lt::aux::vector<lt::download_priority_t, lt::file_index_t>
+		dlprio(65535);
+	for (int i = 0; i < 65535; i++)
+		dlprio[i] = lt::dont_download;
+	atp.file_priorities = dlprio;
+#endif
 	atp.save_path = "."; // save in current dir
 
 	lt::torrent_handle torh = sess.add_torrent(atp);
