@@ -35,10 +35,12 @@
 #include <libtorrent/torrent_info.hpp>
 
 #if LIBTORRENT_VERSION_NUM >= 20000
-#include <libtorrent/download_priority.hpp>	// lt::download_priority_t,
-						// lt::dont_download
-#include <libtorrent/units.hpp>			// lt::file_index_t
-#include <libtorrent/aux_/vector.hpp>		// lt::aux::vector<>
+// lt::disabled_disk_io_constructor:
+#include <libtorrent/disabled_disk_io.hpp>
+// lt::download_priority_t, lt::dont_download:
+#include <libtorrent/download_priority.hpp>
+#include <libtorrent/units.hpp>		// lt::file_index_t
+#include <libtorrent/aux_/vector.hpp>	// lt::aux::vector<>
 #endif
 
 static int usage(const char *argv0) {
@@ -158,14 +160,16 @@ int main(int argc, char *argv[]) {
 	*/
 #else
 	// Create session_params and session. The ut_metadata extension
-	// (plugin) is requited to get .torrent metadata via magnet: link,
+	// (plugin) is required to get .torrent metadata via 'magnet:' link,
 	// but the other two default plugins (ut_pex and smart_ban) aren't.
 	using plgnwrp = lt::aux::session_impl::session_plugin_wrapper;
 	std::vector<std::shared_ptr<lt::plugin>> exts;
 	exts.push_back(
 		std::make_shared<plgnwrp>(&lt::create_ut_metadata_plugin));
 	lt::session_params sparams(spack, exts);
-	// sparams.disk_io_constructor = lt::disabled_disk_io_constructor();
+#if LIBTORRENT_VERSION_NUM >= 20000
+	sparams.disk_io_constructor = &lt::disabled_disk_io_constructor;
+#endif
 	lt::session sess(sparams);
 	// sess.add_extension(&lt::create_ut_pex_plugin);
 	// sess.add_extension(&lt::create_smart_ban_plugin);
