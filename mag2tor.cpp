@@ -207,7 +207,8 @@ int main(int argc, char *argv[]) {
 	atp.save_path = "."; // save in current dir
 
 	lt::torrent_handle torh = sess.add_torrent(atp);
-	std::cout << magnet_url << ":";
+	int sol = 1;	// start of line (on std::cout)
+
 	for (;;) {
 #if LIBTORRENT_VERSION_NUM < 10200
 		std::deque<lt::alert*> alerts;
@@ -216,7 +217,9 @@ int main(int argc, char *argv[]) {
 #endif
 		sess.pop_alerts(&alerts);
 		for (lt::alert const* a : alerts) {
-			std::cout << std::endl << a->message() << std::endl;
+			if (!sol++) std::cout << std::endl;
+			std::cout << a->what() << ": " << a->message()
+				<< std::endl;
 			// quit on error/finish:
 			if (lt::alert_cast<lt::torrent_finished_alert>(a)
 			|| lt::alert_cast<lt::torrent_error_alert>(a)) {
@@ -225,36 +228,61 @@ int main(int argc, char *argv[]) {
 		}
 		if (torh.status().has_metadata) {
 			sess.pause();
+			std::shared_ptr<lt::torrent_info> pti;
 #if LIBTORRENT_VERSION_NUM < 10200
-			lt::torrent_info tinf =
-				torh.get_torrent_info();
-			const std::string &tname = tinf.name();
+			lt::torrent_info ti = torh.get_torrent_info();
+			pti = &tinf;
 #else
-			std::shared_ptr<const lt::torrent_info> tinf =
-				torh.torrent_file();
-			const std::string &tname = tinf->name();
+			pti = torh.torrent_file_with_hashes();
 #endif
-			std::cout << tname << std::endl;
+			if (!sol++) std::cout << std::endl;
+			std::cout << "retrieved info: " << pti->name()
+				<< ".torrent" << std::endl;
+			if (!pti->comment().empty())
+				std::cout << "       comment: "
+					<< pti->comment() << std::endl;
+			if (!pti->creator().empty())
+				std::cout << "       creator: "
+					<< pti->creator() << std::endl;
+			/*
+			 * XXX: starting with libtorrent-rasterbar-2.0.7,
+			 * torrent_info (and subsequently a .torrent file) is
+			 * generated with empty trackers() list. As a
+			 * workaround, add trackers from atp/magnet to pti:
+			 */
+			if (pti->trackers().empty()) {
+				for (auto &u : atp.trackers) {
+					pti->add_tracker(u, 0,
+						lt::announce_entry
+						::source_magnet_link);
+				};
+			};
+			if (!pti->trackers().empty()) {
+				std::cout << "      trackers: ";
+				int n = 0;
+				for (lt::announce_entry const &ann
+				: pti->trackers()) {
+					if (n++) std::cout << ", ";
+					std::cout << ann.url;
+				};
+				std::cout << std::endl;
+			};
 			std::cout.flush();
 			std::ofstream ofs;
 			ofs.exceptions(std::ofstream::failbit
 					| std::ofstream::badbit);
-			ofs.open(tname + ".torrent",
+			ofs.open(pti->name() + ".torrent",
 					std::ofstream::binary);
 			std::ostream_iterator<char> ofsi(ofs);
-#if LIBTORRENT_VERSION_NUM < 10200
-			lt::bencode(ofsi, lt::create_torrent(tinf)
+			lt::bencode(ofsi, lt::create_torrent(*pti)
 					.generate());
-#else
-			lt::bencode(ofsi, lt::create_torrent(*tinf)
-					.generate());
-#endif
 			ofs.close();
 			sess.remove_torrent(torh);
 			goto done0;
 		};
 		std::cout << ".";
 		std::cout.flush();
+		sol = 0;
 		std::this_thread::sleep_for(
 			std::chrono::milliseconds(1000));
 	}
