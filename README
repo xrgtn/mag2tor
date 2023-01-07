@@ -21,3 +21,46 @@ https://www.rasterbar.com/products/libtorrent/tutorial-ref.html
 https://www.rasterbar.com/products/libtorrent/manual-ref.html
 https://github.com/arvidn/libtorrent/releases/tag/libtorrent-1_2_5
 https://github.com/arvidn/libtorrent/releases/download/libtorrent-1_2_5/libtorrent-rasterbar-1.2.5.tar.gz
+
+XXX: Example interactive python session using libtorrent-rasterbar-1.something.something
+(sorry, I don't remember which one exactly, should have been 1.1.x):
+
+foo@bar:/tmp/baz$ python
+Python 2.7.9 (default, Mar  1 2015, 12:57:24)
+[GCC 4.9.2] on linux2
+Type "help", "copyright", "credits" or "license" for more information.
+>>> import libtorrent
+>>> import os.path
+>>> s = libtorrent.session()
+>>> t = libtorrent.add_magnet_uri(s, 'magnet:?xt=urn:btih:11A2BB235D4A95FD0B1359E0BE403408C5C39750&tr=http%3A%2F%2Fbt4.t-ru.org%2Fann%3Fmagnet', {'save_path':os.path.abspath(os.path.curdir), 'paused':False, 'auto_managed':False, 'upload_mode':True})
+>>> t.has_metadata()
+False
+>>> t.has_metadata()
+False
+>>> t.has_metadata()
+True
+>>>
+foo@bar:/tmp/baz$ ls
+foo@bar:/tmp/baz$ 
+
+Example interactive python session using libtorrent-rasterbar-2.0.7 on Gentoo
+Linux:
+
+Python 3.10.9 (main, Dec 17 2022, 03:20:00) [GCC 11.3.0] on linux
+Type "help", "copyright", "credits" or "license" for more information.
+>>> import libtorrent as lt
+>>> sess = lt.session()
+>>> atp = lt.parse_magnet_uri("magnet:?xt=urn:btih:34C77A5EB7C1823F17589A90933360C6C5DBD8A6&tr=http%3A%2F%2Fbt.t-ru.org%2Fann%3Fmagnet&dn=%D0%92%D0%B0%D0%B2%D0%B8%D0%BB%D0%BE%D0%BD%205")
+>>> atp.save_path = '.'
+>>> atp.flags = lt.torrent_flags.upload_mode
+>>> torr = sess.add_torrent(atp)
+>>> torr.status().has_metadata
+False
+>>> torr.status().has_metadata
+False
+>>> torr.status().has_metadata
+False
+>>> torr.status().has_metadata
+False
+>>> torr.status().has_metadata
+True
