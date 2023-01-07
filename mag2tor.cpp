@@ -184,9 +184,7 @@ int main(int argc, char *argv[]) {
 	// Hopefully 'upload_mode' works as advertized above, but in case it
 	// doesn't, use 'disabled_storage_constructor' or long vector with
 	// 'dont_download' anyway...
-	atp.flags = lt::torrent_flags::upload_mode
-		| lt::torrent_flags::auto_managed
-		| lt::torrent_flags::paused;
+	atp.flags = lt::torrent_flags::upload_mode;
 #endif
 
 #if LIBTORRENT_VERSION_NUM < 20000
